@@ -1,0 +1,5 @@
+set disassembly-flavor intel
+target remote :1234
+display /6i $rip
+#hb *0x7c00
+continue
