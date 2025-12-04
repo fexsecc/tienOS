@@ -37,6 +37,14 @@ size_t strlen(const char* str) {
     return len;
 }
 
+void memcpy(void* dest, const void* src, size_t n) {
+    uint8_t *d = (uint8_t *)dest;
+    const uint8_t *s = (const uint8_t *)src;
+    for (size_t i = 0; i < n; i++) {
+	d[i] = s[i];
+    }
+}
+
 #define VGA_WIDTH   80
 #define VGA_HEIGHT  25
 #define VGA_MEMORY  0xB8000 
@@ -71,12 +79,22 @@ void terminal_putchar(char c) {
         terminal_column = 0;
     }
     else {
-	    terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-        if (++terminal_column == VGA_WIDTH) {
-	    	terminal_column = 0;
-	    	if (++terminal_row == VGA_HEIGHT)
-	    		terminal_row = 0;
-	    }
+	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
+	terminal_column++;
+    }
+    if (terminal_column == VGA_WIDTH - 1) {
+	terminal_row++;
+    }
+
+
+    // Delete first row and keep going
+    if (terminal_row == VGA_HEIGHT - 1) {
+    	uint8_t snap[(VGA_HEIGHT - 1) * VGA_WIDTH];
+    	memcpy(snap, &terminal_buffer[1 * VGA_WIDTH], sizeof(snap));
+    	memcpy(terminal_buffer, snap, sizeof(snap));
+	for (size_t x = 0; x < VGA_WIDTH; x++)
+	    terminal_buffer[((VGA_HEIGHT - 1) * VGA_WIDTH) + x] = vga_entry(' ', terminal_color);
+    	terminal_row = VGA_HEIGHT - 2;
     }
 }
 
@@ -90,6 +108,17 @@ void terminal_write(const char* data, size_t len) {
 
 void kernel_main() {
     init_terminal();
-    const char* msg = "Hello, kernel world!\n";
-    terminal_write(msg, strlen(msg));
+    char buf[] = "Hello kernel\n";
+    terminal_write(buf, strlen(buf));
+    char buf2[] = "Hello kernel 2!\n";
+    for (size_t i = 0; i < 2; i++) {
+	terminal_write(buf2, strlen(buf2));
+    }
+    char buf3[] = "Hello kernel 3!\n";
+    for (size_t i = 0; i < 20; i++) {
+	terminal_write(buf3, strlen(buf3));
+    }
+
+    terminal_write(buf, strlen(buf));
+    //terminal_write(buf, strlen(buf));
 }
