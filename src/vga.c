@@ -45,15 +45,15 @@ void terminal_putchar(char c) {
     else {
 	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
 	terminal_column++;
-	if (terminal_column == VGA_WIDTH - 1) {
+	if (terminal_column >= VGA_WIDTH - 1) {
 	    terminal_row++;
         }
     }
 
 
     // Delete first row and keep going
-    if (terminal_row == VGA_HEIGHT - 1) {
-    	uint8_t snap[(VGA_HEIGHT - 1) * VGA_WIDTH];
+    if (terminal_row >= VGA_HEIGHT - 1) {
+    	uint16_t snap[(VGA_HEIGHT - 1) * VGA_WIDTH];
     	memcpy(snap, &terminal_buffer[1 * VGA_WIDTH], sizeof(snap));
     	memcpy(terminal_buffer, snap, sizeof(snap));
 	for (size_t x = 0; x < VGA_WIDTH; x++) {

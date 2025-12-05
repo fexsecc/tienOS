@@ -20,5 +20,4 @@ void kernel_main() {
     }
 
     terminal_write(buf, strlen(buf));
-    //terminal_write(buf, strlen(buf));
 }
