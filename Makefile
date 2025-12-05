@@ -16,15 +16,21 @@ SRCDIR := ./src
 BUILDDIR := ./build
 BINDIR := ./bin
 
-# Sources / objects
-C_SRCS := $(wildcard $(SRCDIR)/*.c)
-ASM_SRCS := $(SRCDIR)/kernel.asm
+# Boot file (keep separate)
 ASM_BOOT := $(SRCDIR)/boot/boot.asm
 
+# Find sources recursively, excluding boot directory
+C_SRCS := $(filter-out $(SRCDIR)/boot/%,$(shell find $(SRCDIR) -name '*.c'))
+ASM_SRCS := $(filter-out $(SRCDIR)/boot/%,$(shell find $(SRCDIR) -name '*.asm'))
+HDRS    := $(filter-out $(SRCDIR)/boot/%,$(shell find $(SRCDIR) -name '*.h'))
+
+# Convert source paths to object paths under build/, preserving dirs
 C_OBJS := $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(C_SRCS))
-ASM_OBJS := $(BUILDDIR)/kernel.asm.o
-KERNEL_OBJS := $(ASM_OBJS) $(BUILDDIR)/kernelfull.o  # kernelfull.o created during link step
-ALL_FILES := $(ASM_OBJS) $(BUILDDIR)/kernel.o
+ASM_OBJS := $(patsubst $(SRCDIR)/%.asm,$(BUILDDIR)/%.asm.o,$(ASM_SRCS))
+
+# KERNEL_OBJS: all asm objects (non-boot) plus C objects
+KERNEL_OBJS := $(ASM_OBJS) $(C_OBJS)
+ALL_FILES := $(ASM_OBJS) $(C_OBJS) $(HDRS)
 
 .PHONY: all clean dirs
 
@@ -34,22 +40,24 @@ all: $(BINDIR)/boot.bin $(BINDIR)/kernel.bin
 	dd if=$(BINDIR)/kernel.bin >> $(BINDIR)/os.bin
 	dd if=/dev/zero bs=512 count=100 >> $(BINDIR)/os.bin
 
-# Boot binary
+# Boot binary (unchanged)
 $(BINDIR)/boot.bin: $(ASM_BOOT) | dirs
 	$(ASM) -f bin $< -o $@
 
-# Assemble kernel asm (ELF)
-$(ASM_OBJS): $(ASM_SRCS) | dirs
+# Rule to assemble kernel asm files (ELF) into corresponding build/.../*.asm.o
+# Preserve subdirs: ensure target directory exists before building
+$(BUILDDIR)/%.asm.o: $(SRCDIR)/%.asm | dirs
+	mkdir -p $(dir $@)
 	$(ASM) -f elf -g $< -o $@
 
-# Compile C sources to build/*.o
+# Compile C sources to build/.../*.o (preserve subdirs)
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c | dirs
+	mkdir -p $(dir $@)
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-# Produce kernelfull.o by collecting specific object files (use the actual list of objs you want)
-# Here we link the asm object and all C object files into a relocatable kernelfull.o
-$(BUILDDIR)/kernelfull.o: $(ASM_OBJS) $(C_OBJS)
-	$(LD) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) -o $@
+# Produce kernelfull.o by linking all kernel objects (relocatable)
+$(BUILDDIR)/kernelfull.o: $(KERNEL_OBJS) | dirs
+	$(LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
 
 # Final linked kernel binary using linker script
 $(BINDIR)/kernel.bin: $(BUILDDIR)/kernelfull.o | dirs
