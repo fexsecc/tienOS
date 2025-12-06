@@ -5,6 +5,7 @@
 #include <memory/memory.h>
 #include <vga/vga.h>
 #include <idt/idt.h>
+#include <io/io.h>
 
 void kernel_main() {
     init_terminal();
@@ -12,4 +13,6 @@ void kernel_main() {
     terminal_write(hello_msg, strlen(hello_msg));
 
     idt_init();
+
+    outb(0x60, 0xff);
 }
