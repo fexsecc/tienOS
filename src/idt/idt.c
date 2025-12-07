@@ -2,11 +2,24 @@
 #include <memory/memory.h>
 #include <config.h>
 #include <vga/vga.h>
+#include <io/io.h>
 
 struct idt_desc idt_descriptors[TOTAL_INTERRUPTS];
 struct idtr idtr_descriptor;
 
 extern void idt_load(struct idtr* ptr);
+extern void int21h();
+extern void no_interrupt();
+
+void int21h_handler() {
+    char err[] = "Keyboard pressed!\n";
+    terminal_write(err, strlen(err));
+    outb(0x20, 0x20);
+}
+
+void no_interrupt_handler() {
+    outb(0x20, 0x20);
+}
 
 void idt_zero() {
     char err[] = "Divide by zero fault!\n";
@@ -28,7 +41,12 @@ void idt_init() {
     idtr_descriptor.limit = sizeof(idt_descriptors) - 1;
     idtr_descriptor.base = (uint32_t)idt_descriptors;
 
+    for (size_t i = 0; i < TOTAL_INTERRUPTS; i++) {
+        idt_set(i, no_interrupt);
+    }
+
     idt_set(0, idt_zero);
+    idt_set(0x21, int21h);
 
     idt_load(&idtr_descriptor);
 }
