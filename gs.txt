@@ -1,6 +1,6 @@
 set disassembly-flavor intel
 target remote :1234
-display /6i $rip
+display /6i $eip
 add-symbol-file ./build/kernelfull.o 0x100000
 hb kernel_main
 continue
